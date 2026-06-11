@@ -269,4 +269,36 @@ export class Sfx {
       this.a.tone({ type: 'square', freq: f, dur: 0.1, gain: 0.12, t0: t + i * 0.08 });
     });
   }
+
+  // パチンコの「キュイン」確定音
+  kyuin() {
+    const t = this.a.now();
+    this.a.tone({ type: 'sine', freq: 500, glideTo: 2600, dur: 0.55, gain: 0.26, t0: t });
+    this.a.tone({ type: 'sawtooth', freq: 500, glideTo: 2600, dur: 0.55, gain: 0.08, t0: t });
+    [2093, 2637, 3136].forEach((f, i) => {
+      this.a.tone({ type: 'sine', freq: f, dur: 0.35, gain: 0.1, t0: t + 0.5 + i * 0.06 });
+    });
+  }
+
+  // 疑似連の継続インパクト音
+  ren(round: number) {
+    const t = this.a.now();
+    this.a.noise({ dur: 0.2, gain: 0.3, filterFreq: 500, filterTo: 3000, t0: t });
+    this.a.tone({ type: 'square', freq: 220 * (1 + round * 0.25), glideTo: 440 * (1 + round * 0.25), dur: 0.3, gain: 0.16, t0: t + 0.05 });
+    this.a.tone({ type: 'sine', freq: 80, dur: 0.25, gain: 0.36, t0: t });
+  }
+
+  // ボーナスルーレットのチック音
+  bonusTick() {
+    this.a.tone({ type: 'square', freq: 980, dur: 0.04, gain: 0.09 });
+  }
+
+  // 魚群が泳ぐ音（コポコポ＋ヒュー）
+  swarm() {
+    const t = this.a.now();
+    this.a.noise({ dur: 1.2, gain: 0.12, filterFreq: 600, filterTo: 1800, t0: t });
+    for (let i = 0; i < 6; i++) {
+      this.a.tone({ type: 'sine', freq: 700 + Math.random() * 500, glideTo: 1500, dur: 0.1, gain: 0.06, t0: t + i * 0.16 });
+    }
+  }
 }

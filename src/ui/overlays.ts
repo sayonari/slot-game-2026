@@ -89,6 +89,43 @@ export class Overlays {
     });
   }
 
+  // ボーナスランクルーレット：高速回転→減速→確定
+  bonusRoulette(
+    ranks: { name: string; color: string }[],
+    finalIndex: number,
+    onTick: () => void,
+    onLand: () => void
+  ): Promise<void> {
+    return new Promise((res) => {
+      const el = $('bonus');
+      const rankEl = $('bonus-rank');
+      el.classList.remove('hidden');
+      rankEl.classList.remove('land');
+      const totalSteps = 26 + ((finalIndex - 26) % ranks.length + ranks.length) % ranks.length;
+      let step = 0;
+      const tick = () => {
+        const i = step % ranks.length;
+        rankEl.textContent = ranks[i].name;
+        rankEl.style.color = ranks[i].color;
+        onTick();
+        step++;
+        if (step <= totalSteps) {
+          // だんだん減速
+          const t = step / totalSteps;
+          setTimeout(tick, 60 + t * t * 320);
+        } else {
+          rankEl.classList.add('land');
+          onLand();
+          setTimeout(() => {
+            el.classList.add('hidden');
+            res();
+          }, 1700);
+        }
+      };
+      tick();
+    });
+  }
+
   // 汎用バナー（フリースピン突入・終了・レベルアップ等）
   banner(title: string, sub: string, ms = 2000): Promise<void> {
     return new Promise((res) => {

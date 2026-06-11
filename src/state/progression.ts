@@ -32,6 +32,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'lucky_777',    icon: '7️⃣', name: 'ラッキーセブン',   desc: '？？？（777にまつわる何か）', secret: true },
   { id: 'seven_hour',   icon: '🕖', name: '七時の奇跡',       desc: '？？？（時間に関係がある）', secret: true },
   { id: 'perfect',      icon: '🃏', name: 'パーフェクト',     desc: '？？？（画面が全て同じに）', secret: true },
+  { id: 'bonus_first',  icon: '🎖️', name: 'ボーナスデビュー', desc: 'BONUS CHANCEに当選する' },
+  { id: 'bonus_major',  icon: '🏆', name: 'MAJOR制覇',        desc: 'MAJORボーナスを引き当てる' },
   { id: 'col_master',   icon: '📚', name: '図鑑コンプリート', desc: '演出図鑑を全て埋める' },
 ];
 
@@ -60,6 +62,12 @@ export const COLLECTION_ITEMS: CollectionDef[] = [
   { id: 'fever',        icon: '🔥', name: 'フィーバーモード' },
   { id: 'rescue',       icon: '🚑', name: '救済ルーレット' },
   { id: 'daily',        icon: '📅', name: 'デイリーボーナス' },
+  { id: 'gun',          icon: '🐠', name: '魚群予告' },
+  { id: 'ren',          icon: '🔁', name: '疑似連' },
+  { id: 'bonus_mini',   icon: '🎖️', name: 'ボーナスMINI' },
+  { id: 'bonus_minor',  icon: '🏅', name: 'ボーナスMINOR' },
+  { id: 'bonus_major',  icon: '🏆', name: 'ボーナスMAJOR' },
+  { id: 'lucky',        icon: '⚡', name: 'ラッキータイム' },
 ];
 
 export interface ThemeUnlock {

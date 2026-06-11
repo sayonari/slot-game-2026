@@ -30,6 +30,10 @@ const MESSAGES = [
   '実績を集めて図鑑をコンプリートしよう！',
   '7時台に遊ぶと何かが起こる…かも？',
   'タイトルロゴ、なんだか触りたくなるよね…',
+  '突然の「BONUS CHANCE」でMINI/MINOR/MAJORの大量メダル！',
+  '🐠 魚群が泳いだら大チャンス！…たまにガセ',
+  '疑似連は続くほどアツい！ 2連来たら期待大！',
+  'ボーナス後はLUCKY TIME！10回転 消費なしの超高確率！',
 ];
 
 export class Hud {
@@ -98,6 +102,16 @@ export class Hud {
       el.classList.remove('hidden');
       $('fs-left').textContent = String(left);
       $('fs-mult').textContent = String(mult);
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  setLucky(left: number) {
+    const el = $('lucky-hud');
+    if (left > 0) {
+      el.classList.remove('hidden');
+      $('lucky-left').textContent = String(left);
     } else {
       el.classList.add('hidden');
     }

@@ -1,6 +1,6 @@
 // 2Dオーバーレイ演出：パーティクル・雷・当選ライン・シェイク・フラッシュ
 
-type ParticleKind = 'coin' | 'confetti' | 'spark' | 'fish' | 'star';
+type ParticleKind = 'coin' | 'confetti' | 'spark' | 'fish' | 'star' | 'swarm';
 
 interface Particle {
   kind: ParticleKind;
@@ -144,6 +144,21 @@ export class FxOverlay {
         vx: (Math.random() - 0.5) * 60, vy: 220 + Math.random() * 260,
         size: 22 + Math.random() * 18, ttl: 3.6, gravity: 260,
         vr: (Math.random() - 0.5) * 3,
+      });
+    }
+  }
+
+  // 魚群予告：画面右から左へ群れが泳ぎ抜ける
+  swarm(n = 26) {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    for (let i = 0; i < n; i++) {
+      this.push({
+        kind: 'swarm',
+        x: w + 50 + Math.random() * 420, y: h * (0.28 + Math.random() * 0.4),
+        vx: -(420 + Math.random() * 200), vy: 0,
+        size: 26 + Math.random() * 18, ttl: 4.5, gravity: 0,
+        vr: 0,
       });
     }
   }
@@ -310,6 +325,12 @@ export class FxOverlay {
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillText('🐟', 0, 0);
+      } else if (p.kind === 'swarm') {
+        g.translate(0, Math.sin(p.life * 6 + p.rot) * 18);
+        g.font = `${p.size}px serif`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('🐠', 0, 0);
       }
       g.restore();
     }

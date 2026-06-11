@@ -21,7 +21,7 @@ export interface SymbolDef {
 }
 
 export const SYMBOLS: SymbolDef[] = [
-  { id: 0, key: 'wild',    name: 'WILD',      kind: 'wild',    emoji: '🌈', color: '#ff5cf0', pays: [50, 250, 1000], weight: 2 },
+  { id: 0, key: 'wild',    name: 'WILD',      kind: 'wild',    emoji: '🌈', color: '#ff5cf0', pays: [50, 250, 1000], weight: 3 },
   { id: 1, key: 'seven',   name: 'セブン',     kind: 'seven',   emoji: '7',  color: '#ff3355', pays: [30, 120, 500],  weight: 3 },
   { id: 2, key: 'bar',     name: 'BAR',       kind: 'bar',     emoji: 'B',  color: '#ffd24a', pays: [20, 60, 200],   weight: 4 },
   { id: 3, key: 'diamond', name: 'ダイヤ',     kind: 'emoji',   emoji: '💎', color: '#19e3ff', pays: [15, 40, 120],   weight: 5 },
@@ -30,7 +30,7 @@ export const SYMBOLS: SymbolDef[] = [
   { id: 6, key: 'clover',  name: 'クローバー', kind: 'emoji',   emoji: '🍀', color: '#4ade80', pays: [5, 15, 40],     weight: 7 },
   { id: 7, key: 'cherry',  name: 'チェリー',   kind: 'emoji',   emoji: '🍒', color: '#ff6688', pays: [4, 10, 30],     weight: 8 },
   { id: 8, key: 'lemon',   name: 'レモン',     kind: 'emoji',   emoji: '🍋', color: '#ffe066', pays: [3, 8, 20],      weight: 8 },
-  { id: 9, key: 'scatter', name: 'BONUS',     kind: 'scatter', emoji: '🎰', color: '#b388ff', pays: [0, 0, 0],       weight: 2 },
+  { id: 9, key: 'scatter', name: 'BONUS',     kind: 'scatter', emoji: '🎰', color: '#b388ff', pays: [0, 0, 0],       weight: 3 },
 ];
 
 export const WILD_ID = 0;
@@ -52,6 +52,40 @@ export const LINE_COLORS = [
   '#ff2d95', '#19e3ff', '#ffd24a', '#4ade80', '#ff8c42',
   '#b388ff', '#ff5560', '#7ef0ff', '#ffe066', '#5cffb8',
 ];
+
+// ============ 当たりやすさ（楽しさ優先チューニング） ============
+export const BASE_REROLLS = 1;   // 毎スピン、ハズレなら1回引き直し
+export const FEVER_REROLLS = 3;  // GOD MODE中の引き直し
+export const LUCKY_REROLLS = 5;  // ラッキータイム中の引き直し
+export const PITY_LOSSES = 5;    // 天井：5連敗で必ず当たる
+
+// ============ ボーナスゲーム（MINI / MINOR / MAJOR） ============
+export interface BonusRank {
+  id: 'mini' | 'minor' | 'major';
+  name: string;
+  mult: number;  // 獲得メダル＝総ベット×mult
+  color: string;
+  weight: number;
+}
+
+export const BONUS_RANKS: BonusRank[] = [
+  { id: 'mini',  name: 'MINI',  mult: 30,  color: '#19e3ff', weight: 60 },
+  { id: 'minor', name: 'MINOR', mult: 80,  color: '#ffd24a', weight: 30 },
+  { id: 'major', name: 'MAJOR', mult: 250, color: '#ff2d95', weight: 10 },
+];
+
+export const BONUS_CHANCE = 1 / 40; // 通常スピンごとの突入率
+export const LUCKY_SPINS = 10;      // ラッキータイム回転数（メダル消費なし）
+
+export function pickBonusRank(): BonusRank {
+  const total = BONUS_RANKS.reduce((a, r) => a + r.weight, 0);
+  let roll = Math.random() * total;
+  for (const r of BONUS_RANKS) {
+    roll -= r.weight;
+    if (roll <= 0) return r;
+  }
+  return BONUS_RANKS[0];
+}
 
 // 決定論的な乱数（リール配列生成用）
 export function mulberry32(seed: number): () => number {

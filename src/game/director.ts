@@ -1,6 +1,11 @@
 // スピン進行・演出・配当・進行要素を統括するディレクター
 
-import { BET_STEPS, LINE_COLORS, REELS, SCATTER_ID } from '../core/config';
+import {
+  BET_STEPS, LINE_COLORS, REELS, SCATTER_ID,
+  BASE_REROLLS, FEVER_REROLLS, LUCKY_REROLLS, PITY_LOSSES,
+  BONUS_CHANCE, BONUS_RANKS, LUCKY_SPINS, pickBonusRank,
+} from '../core/config';
+import type { BonusRank } from '../core/config';
 import type { SpinOptions, SpinResult } from '../core/engine';
 import { SlotEngine } from '../core/engine';
 import type { SlotScene } from '../render/scene';
@@ -21,6 +26,8 @@ interface Plan {
   aura: AuraTier;
   cutin: 0 | 1 | 2 | 3;
   anticipationFrom: number;
+  swarm: boolean;
+  ren: number; // 疑似連の回数（0〜2）
 }
 
 const CUTIN_TEXT: Record<1 | 2 | 3, string> = {
@@ -49,6 +56,8 @@ export class Director {
   private fsMult = 2;
   private fsTotal = 0;
   private feverSpins = 0;
+  private luckyLeft = 0;
+  private luckyTotal = 0;
 
   private engine: SlotEngine;
   private scene: SlotScene;
@@ -191,14 +200,28 @@ export class Director {
     });
   }
 
-  private plan(result: SpinResult, bet: number): Plan {
+  // ハズレかつスキャッター3未満の「何も起きない」出目（疑似連の仮停止用）
+  private losingStops(bet: number): number[] {
+    for (let i = 0; i < 12; i++) {
+      const st = this.engine.randomStops();
+      const r = this.engine.evaluate(st, bet);
+      if (r.totalWin === 0 && r.scatterCount < 3) return st;
+    }
+    return this.engine.randomStops();
+  }
+
+  private plan(result: SpinResult, bet: number, bonusRank: BonusRank | null): Plan {
     let aura: AuraTier = 'none';
     let cutin: 0 | 1 | 2 | 3 = 0;
     const ratio = result.totalWin / bet;
 
-    if (result.isJackpot) {
-      aura = 'rainbow';
-      cutin = 3;
+    if (result.isJackpot || bonusRank) {
+      aura = Math.random() < 0.6 ? 'rainbow' : 'red';
+      cutin = Math.random() < 0.5 ? 3 : 2;
+      if (result.isJackpot) {
+        aura = 'rainbow';
+        cutin = 3;
+      }
     } else if (result.freeSpins > 0 || ratio >= 30) {
       aura = Math.random() < 0.55 ? 'rainbow' : 'red';
       if (Math.random() < 0.75) cutin = Math.random() < 0.5 ? 3 : 2;
@@ -230,7 +253,25 @@ export class Director {
       }
       cum += result.grid[i].filter((s) => s === SCATTER_ID).length;
     }
-    return { aura, cutin, anticipationFrom };
+
+    // 🐠 魚群予告：大チャンス時に高確率、ハズレ時に極稀のガセ
+    let swarm = false;
+    if (bonusRank || result.isJackpot) swarm = Math.random() < 0.6;
+    else if (result.freeSpins > 0 || ratio >= 30) swarm = Math.random() < 0.55;
+    else if (ratio >= 10) swarm = Math.random() < 0.3;
+    else if (ratio === 0) swarm = Math.random() < 0.012; // ガセ魚群
+
+    // 🔁 疑似連：アツいほど連が増える
+    let ren = 0;
+    if (bonusRank || result.isJackpot || result.freeSpins > 0 || ratio >= 30) {
+      ren = Math.random() < 0.55 ? 2 : 1;
+    } else if (ratio >= 10 && Math.random() < 0.5) {
+      ren = 1;
+    } else if (ratio === 0 && Math.random() < 0.02) {
+      ren = 1; // ガセ疑似連
+    }
+
+    return { aura, cutin, anticipationFrom, swarm, ren };
   }
 
   async spin(): Promise<void> {
@@ -238,8 +279,16 @@ export class Director {
     const s = this.save;
     const bet = BET_STEPS[s.betIndex];
     const isFree = this.fsLeft > 0;
+    const isLucky = !isFree && this.luckyLeft > 0;
 
-    if (!isFree) {
+    if (isFree) {
+      this.fsLeft--;
+      this.hud.setFreeSpin(this.fsLeft, this.fsMult);
+    } else if (isLucky) {
+      // ラッキータイム：メダル消費なし
+      this.luckyLeft--;
+      this.hud.setLucky(this.luckyLeft);
+    } else {
       if (s.coins < bet) {
         this.ov.toast('コインが足りない！ベットを下げよう');
         this.auto = false;
@@ -252,9 +301,6 @@ export class Director {
       s.jackpot += Math.max(1, Math.round(bet * 0.04));
       this.hud.setCoins(s.coins);
       this.hud.setJackpot(s.jackpot);
-    } else {
-      this.fsLeft--;
-      this.hud.setFreeSpin(this.fsLeft, this.fsMult);
     }
 
     this.spinning = true;
@@ -277,16 +323,20 @@ export class Director {
     const hour = new Date().getHours();
     if (hour === 7 || hour === 19) this.grantAch('seven_hour');
 
-    // 抽選
-    const opts: SpinOptions = {};
+    // 抽選（楽しさ優先：毎スピン1回引き直し）
+    const opts: SpinOptions = { rerolls: BASE_REROLLS };
     let usingFever = false;
     if (this.feverSpins > 0) {
-      opts.rerolls = 2;
+      opts.rerolls = FEVER_REROLLS;
       usingFever = true;
     }
-    if (s.consecLosses >= 8) opts.forceWin = true; // 天井救済：8連敗で必ず当たる
+    if (isLucky) opts.rerolls = LUCKY_REROLLS; // ラッキータイムは超高確率
+    if (s.consecLosses >= PITY_LOSSES) opts.forceWin = true; // 天井救済
     const result = this.engine.spin(bet, opts);
-    const plan = this.plan(result, bet);
+
+    // ボーナスゲーム抽選（通常スピンのみ）
+    const bonusRank = !isFree && !isLucky && Math.random() < BONUS_CHANCE ? pickBonusRank() : null;
+    const plan = this.plan(result, bet, bonusRank);
 
     this.sfx.spinStart();
     this.scene.startSpin();
@@ -305,6 +355,14 @@ export class Director {
       }
     }
 
+    // 🐠 魚群予告
+    if (plan.swarm && !this.quickRequested) {
+      this.fx.swarm();
+      this.sfx.swarm();
+      this.collect('gun');
+      await this.wait(1000);
+    }
+
     // カットイン予告
     const cutinLv = plan.cutin;
     if (cutinLv !== 0 && !this.quickRequested) {
@@ -314,6 +372,33 @@ export class Director {
     }
 
     await this.wait(300);
+
+    // 🔁 疑似連：仮停止→「N連!!」→再回転
+    for (let k = 0; k < plan.ren && !this.quickRequested; k++) {
+      const dummy = this.losingStops(bet);
+      for (let i = 0; i < REELS; i++) {
+        await this.scene.stopReel(i, dummy[i], { ahead: 2 + i, dur: 0.42 });
+        this.sfx.reelStop(i);
+      }
+      await this.wait(330);
+      if (this.quickRequested) break;
+      this.sfx.ren(k);
+      this.fx.flash('#ff2d95', 0.45);
+      this.fx.shake(7);
+      this.collect('ren');
+      await this.ov.cutin(2, `${k + 1}連 !!`);
+      this.scene.startSpin();
+      await this.wait(380);
+    }
+
+    // ボーナス確定の「キュイン!」
+    if (bonusRank && !this.quickRequested) {
+      this.sfx.kyuin();
+      this.fx.flash('#ffd24a', 0.9);
+      this.fx.shake(9);
+      this.ov.setAura('rainbow');
+      await this.wait(550);
+    }
 
     // リール停止シーケンス
     let scattersSoFar = 0;
@@ -341,10 +426,17 @@ export class Director {
       }
     }
 
-    await this.settle(result, bet, isFree, usingFever);
+    await this.settle(result, bet, isFree, isLucky, usingFever, bonusRank);
   }
 
-  private async settle(result: SpinResult, bet: number, isFree: boolean, usingFever: boolean): Promise<void> {
+  private async settle(
+    result: SpinResult,
+    bet: number,
+    isFree: boolean,
+    isLucky: boolean,
+    usingFever: boolean,
+    bonusRank: BonusRank | null
+  ): Promise<void> {
     const s = this.save;
     this.hud.setSpinState('disabled');
 
@@ -395,6 +487,7 @@ export class Director {
       if (s.betIndex === BET_STEPS.length - 1) this.grantAch('maxbet_win');
       if (s.coins >= 100000) this.grantAch('rich');
       if (isFree) this.fsTotal += effWin;
+      if (isLucky) this.luckyTotal += effWin;
 
       if (tier === 'jackpot') {
         this.collect('jackpot');
@@ -430,7 +523,7 @@ export class Director {
       }
       this.hud.setCoins(s.coins);
       this.hud.setWin(effWin);
-    } else if (result.freeSpins === 0) {
+    } else if (result.freeSpins === 0 && !bonusRank) {
       // ハズレ
       s.consecLosses++;
       const r = Math.random();
@@ -477,9 +570,58 @@ export class Director {
     // フリースピン終了
     if (isFree && this.fsLeft === 0 && result.freeSpins === 0) {
       document.body.classList.remove('fs-mode');
-      this.bgm.setMood(this.feverSpins > 0 ? 'fever' : 'normal');
+      this.bgm.setMood(this.feverSpins > 0 || this.luckyLeft > 0 ? 'fever' : 'normal');
       this.hud.setFreeSpin(0, 2);
       await this.ov.banner('FREE SPINS 終了', `合計獲得 🪙 ${this.fsTotal.toLocaleString('ja-JP')}！`);
+    }
+
+    // 🎰 ボーナスゲーム（MINI / MINOR / MAJOR）
+    if (bonusRank) {
+      s.bonusCount++;
+      this.grantAch('bonus_first');
+      if (bonusRank.id === 'major') this.grantAch('bonus_major');
+      const finalIndex = BONUS_RANKS.findIndex((r) => r.id === bonusRank.id);
+      await this.wait(400, false);
+      await this.ov.bonusRoulette(
+        BONUS_RANKS,
+        finalIndex,
+        () => this.sfx.bonusTick(),
+        () => {
+          this.sfx.kyuin();
+          this.fx.flash(bonusRank.color, 0.85);
+          this.fx.shake(14 + finalIndex * 6);
+          this.fx.fireworksShow(3 + finalIndex * 4);
+        }
+      );
+      this.collect(`bonus_${bonusRank.id}`);
+      const award = bonusRank.mult * bet;
+      s.coins += award;
+      s.totalWinAmount += award;
+      s.maxWin = Math.max(s.maxWin, award);
+      const tierByRank: Record<string, WinTier> = { mini: 'big', minor: 'mega', major: 'legend' };
+      this.sfx.fanfare(2 + finalIndex);
+      this.fx.coinRain(60 + finalIndex * 50);
+      this.fx.confettiBurst(60 + finalIndex * 50);
+      await this.ov.showWin(tierByRank[bonusRank.id], award, (p) => this.sfx.countTick(p));
+      this.hud.setCoins(s.coins);
+      this.hud.setWin(award);
+
+      // ⚡ LUCKY TIME 突入
+      this.luckyLeft = LUCKY_SPINS;
+      this.luckyTotal = 0;
+      this.collect('lucky');
+      document.body.classList.add('lucky-mode');
+      this.bgm.setMood('fever');
+      await this.ov.banner('⚡ LUCKY TIME !!', `${LUCKY_SPINS}回転 メダル消費なし＆超激アマ！`);
+      this.hud.setLucky(this.luckyLeft);
+    }
+
+    // ラッキータイム終了
+    if (isLucky && this.luckyLeft === 0) {
+      document.body.classList.remove('lucky-mode');
+      this.bgm.setMood(this.fsLeft > 0 ? 'freespin' : this.feverSpins > 0 ? 'fever' : 'normal');
+      this.hud.setLucky(0);
+      await this.ov.banner('LUCKY TIME 終了', `合計獲得 🪙 ${this.luckyTotal.toLocaleString('ja-JP')}！`);
     }
 
     // フィーバー消化
@@ -515,9 +657,12 @@ export class Director {
     this.spinning = false;
     this.hud.setSpinState('idle');
 
-    // 連続スピン（フリースピン・オート）
+    // 連続スピン（フリースピン・ラッキータイム・オート）
     if (this.fsLeft > 0) {
       await this.wait(750, false);
+      void this.spin();
+    } else if (this.luckyLeft > 0) {
+      await this.wait(700, false);
       void this.spin();
     } else if (this.auto) {
       if (s.coins >= BET_STEPS[s.betIndex]) {

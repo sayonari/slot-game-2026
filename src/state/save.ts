@@ -26,6 +26,7 @@ export interface SaveData {
   consecLosses: number;
   rescueCount: number;
   freespinEntries: number;
+  bonusCount: number;
   settings: Settings;
 }
 
@@ -48,6 +49,7 @@ export const DEFAULT_SAVE: SaveData = {
   consecLosses: 0,
   rescueCount: 0,
   freespinEntries: 0,
+  bonusCount: 0,
   settings: { volume: 0.8, muted: false },
 };
 
