@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>NEON RUSH 2026 ─ 雷光スロット</title>
+  <meta name="description" content="ド派手演出満載！ブラウザで遊べる無料スロットゲーム NEON RUSH 2026" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rampart+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body data-theme="neon">
+  <div id="stage">
+    <div id="bg">
+      <div class="rays"></div>
+      <div class="gridfloor"></div>
+      <div class="vignette"></div>
+    </div>
+
+    <canvas id="gl"></canvas>
+    <div id="cabinet"><div id="aura"></div></div>
+    <canvas id="fx"></canvas>
+
+    <header id="topbar">
+      <div id="logo">NEON<em>★</em>RUSH</div>
+      <div id="jackpot-box">
+        <span class="jp-label">⚡ JACKPOT ⚡</span>
+        <span id="jackpot-value">10,000</span>
+      </div>
+      <div id="level-box">
+        <span id="level-num">Lv.1</span>
+        <div id="level-bar"><div id="level-fill"></div></div>
+      </div>
+      <nav id="menu">
+        <button id="btn-paytable" class="mbtn" title="配当表">💰</button>
+        <button id="btn-ach" class="mbtn" title="実績">🏆</button>
+        <button id="btn-collection" class="mbtn" title="演出図鑑">📖</button>
+        <button id="btn-settings" class="mbtn" title="設定">⚙️</button>
+      </nav>
+    </header>
+
+    <div id="fs-hud" class="hidden">🎁 FREE SPIN 残り <b id="fs-left">0</b> 回 ／ 配当 ×<b id="fs-mult">2</b></div>
+    <div id="msgline">ようこそ NEON RUSH 2026 へ！ SPINボタンか スペースキーで回そう！</div>
+
+    <footer id="hud">
+      <div class="stat">
+        <span class="label">COINS</span>
+        <span id="coins-value" class="num">1,000</span>
+      </div>
+      <div class="stat winstat">
+        <span class="label">WIN</span>
+        <span id="win-value" class="num">0</span>
+      </div>
+      <div id="bet-ctrl">
+        <button id="btn-bet-down" class="bbtn">−</button>
+        <div class="stat">
+          <span class="label">BET</span>
+          <span id="bet-value" class="num">20</span>
+        </div>
+        <button id="btn-bet-up" class="bbtn">＋</button>
+      </div>
+      <button id="btn-spin"><span id="spin-label">SPIN</span></button>
+      <button id="btn-auto">AUTO</button>
+    </footer>
+
+    <div id="flash"></div>
+    <div id="cutin" class="hidden"><div id="cutin-text">激アツ!!</div></div>
+    <div id="winover" class="hidden">
+      <div id="winover-tier">BIG WIN</div>
+      <div id="winover-amount">0</div>
+      <div id="winover-hint">タップでスキップ</div>
+    </div>
+    <div id="banner" class="hidden">
+      <div id="banner-title"></div>
+      <div id="banner-sub"></div>
+    </div>
+    <div id="modal-backdrop" class="hidden">
+      <div id="modal">
+        <button id="modal-close">✕</button>
+        <h2 id="modal-title"></h2>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+    <div id="toast" class="hidden"></div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
